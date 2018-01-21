@@ -63,7 +63,7 @@ typedef struct COLOR_CONTENT {
 //Array of structs
 COLOR_CONTENT COLOR_CONTENT_ARY[9];
 
-uint32_t DEF_BRIGHTNESS = 15; //Global color brightness in %, 0-100
+uint8_t DEF_BRIGHTNESS = 20; //Global color brightness in %, 0-100
 
 
 void init();
@@ -98,22 +98,21 @@ int i=0;
     
     Serial.printf("Printing the RED_COMP:%i,%i,%i\n",COLOR_CONTENT_ARY[i].R,COLOR_CONTENT_ARY[i].G,COLOR_CONTENT_ARY[i].B);
     Serial.printf("------------------------------------------\n");
-    LONG_CRGB.setPixelColor(10, Magenttta);
-      LONG_CRGB.show();  
-    
+    LONG_CRGB.setPixelColor(10, PALLETE[RED]);
+    LONG_CRGB.show();  
     delay(PERIOD);
-    delay(PERIOD);
-    delay(PERIOD);
+    LONG_CRGB.setPixelColor(11, PALLETE[GREEN]);
+    LONG_CRGB.setPixelColor(12, PALLETE[BLUE]);
+    LONG_CRGB.setPixelColor(13, PALLETE[YELLOW]);
+    LONG_CRGB.setPixelColor(14, PALLETE[LIME]);
+    LONG_CRGB.setPixelColor(15, PALLETE[ORANGE]);
+    LONG_CRGB.setPixelColor(16, PALLETE[MAGENTA]);
+    LONG_CRGB.setPixelColor(17, PALLETE[PURPLE]);
+    LONG_CRGB.setPixelColor(18, PALLETE[TURQUOISE]);
 
-    LONG_CRGB.setPixelColor(11, 255,0,255);
-     LONG_CRGB.setPixelColor(12, 255,0,255);\
-      LONG_CRGB.setPixelColor(13, 255,0,255);
-       LONG_CRGB.setPixelColor(14, 255,0,255);
-        LONG_CRGB.setPixelColor(15, 255,0,255);
-    LONG_CRGB.show(); 
+    LONG_CRGB.show();
     delay(PERIOD);
-    delay(PERIOD);
-    delay(PERIOD);
+    SET_BRIGHTNESS(10);
     
     i++;
     if (i>PALLETE_ELEMENTS)i=0;
@@ -210,12 +209,14 @@ void SET_BRIGHTNESS(int percent)
 {
    for (int i=0;i<PALLETE_ELEMENTS;i++)
    {
-      PALLETE[i]= LONG_CRGB.Color((uint32_t) COLOR_CONTENT_ARY[i].R * (percent/100), (uint32_t) COLOR_CONTENT_ARY[i].G * (percent/100), (uint32_t) COLOR_CONTENT_ARY[i].B * (percent/100));
+      //PALLETE[i]= LONG_CRGB.Color( COLOR_CONTENT_ARY[i].R * (percent/100), (uint32_t) COLOR_CONTENT_ARY[i].G * (percent/100), (uint32_t) COLOR_CONTENT_ARY[i].B * (percent/100));
+     PALLETE[i]= LONG_CRGB.Color( (uint8_t)(COLOR_CONTENT_ARY[i].R *  (float)(percent/100.0)), (uint8_t)(COLOR_CONTENT_ARY[i].G * (float)(percent/100.0)), (uint8_t)(COLOR_CONTENT_ARY[i].B * (float)(percent/100.0)));
+ 
       //debug
       //PALLETE[i]= LONG_CRGB.Color(COLOR_CONTENT_ARY[i].R, COLOR_CONTENT_ARY[i].G, COLOR_CONTENT_ARY[i].B);
-
       Serial.printf("%i. R:%i------G:%i------B:%i\n",i,COLOR_CONTENT_ARY[i].R,COLOR_CONTENT_ARY[i].G,COLOR_CONTENT_ARY[i].B);
-      
+      Serial.printf("Test %i\n",( (uint8_t)(COLOR_CONTENT_ARY[i].R * (float)(percent/100.0))));
+
    }
       //Red Green Blue order
    //RED = LONG_CRGB.Color(RED_COMP.R * (precent/100), RED_COMP.G * (precent/100), RED_COMP.B * (precent/100));
