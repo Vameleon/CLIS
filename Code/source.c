@@ -1,55 +1,74 @@
+#include <Adafruit_NeoPixel.h>
 
 
-#include <FastLED.h>
 
-#define LONG_CRGB_P    12           //number of leds on the strip
-#define LONG_CRGB_NUM  57
+#define LONG_CRGB_P    12              //PHY pin
+#define LONG_CRGB_NUM  (57)   //number of leds on the strip
 #define NEIGHBOR_NUM    8
 
 #define SHORT_CRGB_P    14
-#define SHORT_CRGB_NUM    8         //number of leds on the strip
+#define SHORT_CRGB_NUM    (8)         //number of leds on the strip
 
-#define LED_TYPE    WS2812          //Controller model
-//#define UPDATES_PER_SECOND 500
-#define COLOR_ORDER GRB
-#define PERIOD  15000                //period in program cycle in ms
-#define RED     CRGB::Red
-#define GREEN   CRGB::Green 
-#define BLACK   CRGB::Black
-CRGB SHORT_CRGB[SHORT_CRGB_NUM];    //declare our strip and give it an ID
-CRGB LONG_CRGB[LONG_CRGB_NUM];      //declare our strip and give it an ID
+
+//Keep the following order at all times
+#define RED         0
+#define GREEN       1
+#define BLUE        2
+#define YELLOW      3
+#define LIME        4
+#define ORANGE      5
+#define MAGENTA     6
+#define PURPLE      7
+#define TURQUOISE   8 
+
+
+#define PERIOD  1000                //period in program cycle in ms
+
+// Parameter 1 = number of pixels in strip
+// Parameter 2 = pin number (most are valid)
+// Parameter 3 = pixel type flags, add together as needed:
+//   NEO_KHZ800  800 KHz bitstream (most NeoPixel products w/WS2812 LEDs)
+//   NEO_KHZ400  400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
+//   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
+//   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
+Adafruit_NeoPixel LONG_CRGB = Adafruit_NeoPixel(LONG_CRGB_NUM, LONG_CRGB_P, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel SHORT_CRGB = Adafruit_NeoPixel(SHORT_CRGB_NUM, SHORT_CRGB_P, NEO_GRB + NEO_KHZ800);
+
+
+//CRGB SHORT_CRGB[SHORT_CRGB_NUM];    //declare our strip and give it an ID
+//CRGB LONG_CRGB[LONG_CRGB_NUM];      //declare our strip and give it an ID
 
 //---------------------End of Definition---------------------------------------//
 
 
 
+
+
+//-----------------------------Declaration-------------------------//
 enum MODES {NONE,BLINK_SIDES,BLINK_WHOLE,FLASH_SIDES,FLASH_WHOLE};
 MODES INDICATE_M = BLINK_SIDES;
 
-int LONG_BRIGHTNESS = 12;
-int SHORT_BRIGHTNESS = 12;
+uint32_t Magenttta = LONG_CRGB.Color(255,0,255);    //debug
+uint32_t RED_C,GREEN_C,BLUE_C,YELLOW_C,LIME_C,ORANGE_C,MAGENTA_C,PURPLE_C,TURQUOISE_C;
+uint32_t PALLETE []={RED_C,GREEN_C,BLUE_C,YELLOW_C,LIME_C,ORANGE_C,MAGENTA_C,PURPLE_C,TURQUOISE_C};
+int PALLETE_ELEMENTS = sizeof(PALLETE)/sizeof(PALLETE[0]);        //return num of elements
 
-
-
-//int COLORS[] = {
-// CRGB::Blue, CRGB::Orange, CRGB::Yellow, CRGB::Green, CRGB::Maroon,
-// CRGB::DarkRed,CRGB::White,CRGB::SeaGreen,CRGB::Aquamarine,CRGB::OliveDrab,CRGB::Aqua,
-// CRGB::SkyBlue,CRGB::Navy,CRGB::Teal,CRGB::DarkCyan,CRGB::LimeGreen,
-//};
-
-int COLORS[] = {
- CRGB::Blue, CRGB::Orange, CRGB::Yellow, CRGB::Green, CRGB::Maroon,
- CRGB::DarkRed,CRGB::White,CRGB::LimeGreen,CRGB::Red,CRGB::Black
+typedef struct COLOR_CONTENT {
+     uint32_t R,G,B;
 };
-int COLORS_ELE = sizeof(COLORS) / sizeof(COLORS[0]);
+//RED_COMP,GREEN_COMP,
+//BLUE_COMP,YELLOW_COMP,LIME_COMP,
+//ORANGE_COMP,MAGENTA_COMP,PURPLE_COMP,TURQUOISE_COMP;
+
+//Array of structs
+COLOR_CONTENT COLOR_CONTENT_ARY[9];
+
+uint32_t DEF_BRIGHTNESS = 15; //Global color brightness in %, 0-100
 
 
 void init();
-void pallete(void);
-void pallete2(void);
-void on_left_right(int);
-void off_left_right();
-
+void SET_BRIGHTNESS(int);
+void SET_COLORS(void);
 
 //-------------------------End of Declaration--------------------------//
 
@@ -63,29 +82,41 @@ void setup() {
 
 void loop()
 {
-
-
-
-    //pallete();
-    //pallete2();
+int i=0;
     Serial.printf("Program is in loop\n");
-    INDICATE(INDICATE_M);
+    //INDICATE(INDICATE_M);
     Serial.printf("Current Mode is %i\n",INDICATE_M);
-
-   // on_left_right(RED);
-    //delay(300);
-    //off_left_right();
-   // FastLED.setBrightness(  LONG_BRIGHTNESS );
+    Serial.printf("You have %i Elements in your Pallete\n",PALLETE_ELEMENTS);
+    Serial.printf("Printing your PAllete's int values: \n");
+    for (int u=0;u<PALLETE_ELEMENTS;u++)
+    {
+        Serial.printf("-->%u\n",PALLETE[u]);
+               
+    }
+    Serial.printf("Printing Magneta int value now: %i\n",Magenttta);
+    //Serial.printf("Poll: Current color value is: %i\n",LONG_CRGB.getPixelColor(11));
     
+    Serial.printf("Printing the RED_COMP:%i,%i,%i\n",COLOR_CONTENT_ARY[i].R,COLOR_CONTENT_ARY[i].G,COLOR_CONTENT_ARY[i].B);
+    Serial.printf("------------------------------------------\n");
+    LONG_CRGB.setPixelColor(10, Magenttta);
+      LONG_CRGB.show();  
+    
+    delay(PERIOD);
+    delay(PERIOD);
+    delay(PERIOD);
 
-   // LONG_BRIGHTNESS=+1;
-    //if (LONG_BRIGHTNESS >=70)LONG_BRIGHTNESS=0;
-
-
- 
-
-
-
+    LONG_CRGB.setPixelColor(11, 255,0,255);
+     LONG_CRGB.setPixelColor(12, 255,0,255);\
+      LONG_CRGB.setPixelColor(13, 255,0,255);
+       LONG_CRGB.setPixelColor(14, 255,0,255);
+        LONG_CRGB.setPixelColor(15, 255,0,255);
+    LONG_CRGB.show(); 
+    delay(PERIOD);
+    delay(PERIOD);
+    delay(PERIOD);
+    
+    i++;
+    if (i>PALLETE_ELEMENTS)i=0;
   
 }
 
@@ -101,83 +132,22 @@ void init()
     pinMode(SHORT_CRGB_P, OUTPUT);
     Serial.begin(115200);
     Serial.printf("Initiating the MCU.....\n");
-    delay( 3000 ); // power-up safety delay
+    delay( 5000 ); // power-up safety delay
     
-    //initiate library
-    //LONG
-    FastLED.addLeds<LED_TYPE, LONG_CRGB_P, 
-    COLOR_ORDER>(LONG_CRGB, LONG_CRGB_NUM).setCorrection( TypicalLEDStrip );
-    FastLED.setBrightness(LONG_BRIGHTNESS);
-    //SHORT
-    FastLED.addLeds<LED_TYPE, SHORT_CRGB_P, 
-    COLOR_ORDER>(SHORT_CRGB, SHORT_CRGB_NUM).setCorrection( TypicalLEDStrip );
-    FastLED.setBrightness(SHORT_BRIGHTNESS);
-}
-
-
-
-void pallete (void)
-{
-    bool frst_loop = true;
-    //Loop from 0 until you reach the last neighbor
-    //The last neighbor will get its color for the inner loop.
-     for (int i = 0; i < LONG_CRGB_NUM; i+=NEIGHBOR_NUM)
-    {
-            
-        LONG_CRGB[i] = COLORS[random(COLORS_ELE)];
-        //Do the next NEIGHBOR_NUM leds.
-        for (int u=0;u<NEIGHBOR_NUM;u++)
-        {
-            //Put the same current color on our neighbors
-            LONG_CRGB[u+i] = LONG_CRGB[i];
-        }
-       
-        frst_loop=false; //First loop no longer!
-    }
+    //Initiate lib
+    LONG_CRGB.begin();       // Initialize
+    SHORT_CRGB.begin();      // Initialize                    
     
-
-}
-
-void pallete2 (void)
-{
-        for (int i=0;i<SHORT_CRGB_NUM;i++)
-        {
-            SHORT_CRGB[i] = COLORS[random(COLORS_ELE)];
-        }
-}
+    LONG_CRGB.show();        // to off (black)
+    SHORT_CRGB.show();       // to off (black) 
+   
+    SET_COLORS();             //Initialize color values
+    SET_BRIGHTNESS(DEF_BRIGHTNESS);
+    //LONG_CRGB.setPixelColor(11, 255, 0, 255);  
+    //LONG_CRGB.show();     
+    }  
 
 
-
-
-void INDICATE (int mode)
-{
-    switch (mode)
-    {
-        case NONE:
-            off_left_right();
-            return;
-        case BLINK_SIDES:
-            
-            //start from the very last leds
-            //long
-            on_left_right(RED);
-            FastLED.delay(100);
-            off_left_right();
-            INDICATE_M = NONE;
-            return;
-
-        case BLINK_WHOLE:
-            break;
-
-            
-        case FLASH_SIDES:
-            break;
-
-        
-        case FLASH_WHOLE:
-            break;
-    }
-}
 
 
 
@@ -194,80 +164,74 @@ void INDICATE (int mode)
 
 
 //-------------------------------------LOW layer functions----------------------//
+//Init the color values
+//Those values are never changing values
+//Those values represent the default RGB color values
 
-//duration in ms
-void on_left_right(int color)
+
+void SET_COLORS()
 {
-    for (int i=LONG_CRGB_NUM-8;i<LONG_CRGB_NUM;i++)
-    {
-        LONG_CRGB[i]=color;
-        yield();
-        FastLED.show();
-        yield();
-    }
+    //Set default color component values.
+
+    COLOR_CONTENT_ARY[RED].R = 255, COLOR_CONTENT_ARY[0].G = 0,COLOR_CONTENT_ARY[0].B = 0;
+    COLOR_CONTENT_ARY[GREEN].R = 0,   COLOR_CONTENT_ARY[1].G = 255,COLOR_CONTENT_ARY[1].B = 0;
+    COLOR_CONTENT_ARY[BLUE].R = 0,   COLOR_CONTENT_ARY[2].G = 0,COLOR_CONTENT_ARY[2].B = 255;
+    COLOR_CONTENT_ARY[YELLOW].R = 255, COLOR_CONTENT_ARY[3].G = 255,COLOR_CONTENT_ARY[3].B = 0;
+    COLOR_CONTENT_ARY[LIME].R = 153, COLOR_CONTENT_ARY[4].G = 255,COLOR_CONTENT_ARY[4].B = 51;
+    COLOR_CONTENT_ARY[ORANGE].R = 255, COLOR_CONTENT_ARY[5].G = 128,COLOR_CONTENT_ARY[5].B = 0;
+    COLOR_CONTENT_ARY[MAGENTA].R = 255, COLOR_CONTENT_ARY[6].G = 0,COLOR_CONTENT_ARY[6].B = 255;
+    COLOR_CONTENT_ARY[PURPLE].R = 127, COLOR_CONTENT_ARY[7].G = 0,COLOR_CONTENT_ARY[7].B = 255;
+    COLOR_CONTENT_ARY[TURQUOISE].R = 0, COLOR_CONTENT_ARY[8].G = 255,COLOR_CONTENT_ARY[8].B = 255;
+
+
     
-   for (int i=0;i<SHORT_CRGB_NUM;i++)
+    //RED_COMP.R=255, RED_COMP.G=0, RED_COMP.B=0;
+    //GREEN_COMP.R=0, GREEN_COMP.G=255, GREEN_COMP.B=0;
+    //BLUE_COMP.R=0, BLUE_COMP.G=0, BLUE_COMP.B=255; 
+    //YELLOW_COMP.R=255, YELLOW_COMP.G=255, YELLOW_COMP.B=0; 
+    
+    //LIME_COMP.R=153, LIME_COMP.G=255, LIME_COMP.B=51; 
+    
+    //ORANGE_COMP.R=255, ORANGE_COMP.G=128, ORANGE_COMP.B=0; 
+    
+    //MAGENTA_COMP.R=255, MAGENTA_COMP.G=0, MAGENTA_COMP.B=255; 
+    
+    //PURPLE_COMP.R=127, PURPLE_COMP.G=0, PURPLE_COMP.B=255; 
+    
+    //TURQUOISE_COMP.R=0, TURQUOISE_COMP.G=255, TURQUOISE_COMP.B=255;  
+}
+
+
+
+
+//Mapping the colors components(RGB) of the colors given in PALLETE to new values
+//The precent value is multiplied into each component of all PALLETE colors
+void SET_BRIGHTNESS(int percent)
+{
+   for (int i=0;i<PALLETE_ELEMENTS;i++)
    {
-       SHORT_CRGB[i]=color;
-       yield();
-       FastLED.show();
-       yield();
+      PALLETE[i]= LONG_CRGB.Color((uint32_t) COLOR_CONTENT_ARY[i].R * (percent/100), (uint32_t) COLOR_CONTENT_ARY[i].G * (percent/100), (uint32_t) COLOR_CONTENT_ARY[i].B * (percent/100));
+      //debug
+      //PALLETE[i]= LONG_CRGB.Color(COLOR_CONTENT_ARY[i].R, COLOR_CONTENT_ARY[i].G, COLOR_CONTENT_ARY[i].B);
+
+      Serial.printf("%i. R:%i------G:%i------B:%i\n",i,COLOR_CONTENT_ARY[i].R,COLOR_CONTENT_ARY[i].G,COLOR_CONTENT_ARY[i].B);
+      
    }
-   
-
+      //Red Green Blue order
+   //RED = LONG_CRGB.Color(RED_COMP.R * (precent/100), RED_COMP.G * (precent/100), RED_COMP.B * (precent/100));
+   //GREEN = LONG_CRGB.Color(.R * (precent/100), .G * (precent/100), .B * (precent/100));
+   //BLUE = LONG_CRGB.Color(.R * (precent/100), .G * (precent/100), .B * (precent/100));
+   //YELLOW = LONG_CRGB.Color(.R * (precent/100), .G * (precent/100), .B * (precent/100));
+   //LIME = LONG_CRGB.Color(.R * (precent/100), .G * (precent/100), .B * (precent/100));
+   //ORANGE = LONG_CRGB.Color(.R * (precent/100), .G * (precent/100), .B * (precent/100));
+   //MAGENTA = LONG_CRGB.Color(.R * (precent/100), .G * (precent/100), .B * (precent/100));
+   //PURPLE = LONG_CRGB.Color(.R * (precent/100), .G * (precent/100), .B * (precent/100));
+   //TURQUOISE = LONG_CRGB.Color(.R * (precent/100), .G * (precent/100), .B * (precent/100));
 }
 
-void off_left_right()
-{
-    for (int i=LONG_CRGB_NUM-8;i<LONG_CRGB_NUM;i++)
-    {
-        LONG_CRGB[i]=CRGB::Black;
-        yield();
-       FastLED.show();
-        yield();
-    }
-    
-    for (int i=0;i<SHORT_CRGB_NUM;i++)
-    {
-        SHORT_CRGB[i]=CRGB::Black;
-        yield();
-       FastLED.show();
-        yield();
-    }
-   
 
-}
 
 
 //-----------------------------End of LOW layer functions----------------------//
 
-
-
-
-
-
-
-
-
-// Additionl notes on FastLED compact palettes:
-//
-// Normally, in computer graphics, the palette (or "color lookup table")
-// has 256 entries, each containing a specific 24-bit RGB color.  You can then
-// index into the color palette using a simple 8-bit (one byte) value.
-// A 256-entry color palette takes up 768 bytes of RAM, which on Arduino
-// is quite possibly "too many" bytes.
-//
-// FastLED does offer traditional 256-element palettes, for setups that
-// can afford the 768-byte cost in RAM.
-//
-// However, FastLED also offers a compact alternative.  FastLED offers
-// palettes that store 16 distinct entries, but can be accessed AS IF
-// they actually have 256 entries; this is accomplished by interpolating
-// between the 16 explicit entries to create fifteen intermediate palette
-// entries between each pair.
-//
-// So for example, if you set the first two explicit entries of a compact 
-// palette to Green (0,255,0) and Blue (0,0,255), and then retrieved 
-// the first sixteen entries from the virtual palette (of 256), you'd get
-// Green, followed by a smooth gradient from green-to-blue, and then Blue.
 
