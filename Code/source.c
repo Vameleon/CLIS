@@ -63,11 +63,11 @@ typedef struct COLOR_CONTENT {
 //Array of structs
 COLOR_CONTENT COLOR_CONTENT_ARY[9];
 
-uint8_t DEF_BRIGHTNESS = 20; //Global color brightness in %, 0-100
+float DEF_BRIGHTNESS = 20.0; //Global color brightness in %, 0-100
 
 
 void init();
-void SET_BRIGHTNESS(int);
+void SET_BRIGHTNESS(float);
 void SET_COLORS(void);
 
 //-------------------------End of Declaration--------------------------//
@@ -82,7 +82,7 @@ void setup() {
 
 void loop()
 {
-int i=0;
+    uint8_t i=0;
     Serial.printf("Program is in loop\n");
     //INDICATE(INDICATE_M);
     Serial.printf("Current Mode is %i\n",INDICATE_M);
@@ -98,24 +98,21 @@ int i=0;
     
     Serial.printf("Printing the RED_COMP:%i,%i,%i\n",COLOR_CONTENT_ARY[i].R,COLOR_CONTENT_ARY[i].G,COLOR_CONTENT_ARY[i].B);
     Serial.printf("------------------------------------------\n");
-    LONG_CRGB.setPixelColor(10, PALLETE[RED]);
-    LONG_CRGB.show();  
     delay(PERIOD);
-    LONG_CRGB.setPixelColor(11, PALLETE[GREEN]);
-    LONG_CRGB.setPixelColor(12, PALLETE[BLUE]);
-    LONG_CRGB.setPixelColor(13, PALLETE[YELLOW]);
-    LONG_CRGB.setPixelColor(14, PALLETE[LIME]);
-    LONG_CRGB.setPixelColor(15, PALLETE[ORANGE]);
-    LONG_CRGB.setPixelColor(16, PALLETE[MAGENTA]);
-    LONG_CRGB.setPixelColor(17, PALLETE[PURPLE]);
-    LONG_CRGB.setPixelColor(18, PALLETE[TURQUOISE]);
+    for (int n=0;n<PALLETE_ELEMENTS;n++)
+    {
+        LONG_CRGB.setPixelColor(n,PALLETE[n]);\
+        LONG_CRGB.show();
+    }
 
-    LONG_CRGB.show();
+
+
     delay(PERIOD);
-    SET_BRIGHTNESS(10);
+
+    //SET_BRIGHTNESS(10.0);
     
     i++;
-    if (i>PALLETE_ELEMENTS)i=0;
+    if (i>99)i=0;
   
 }
 
@@ -205,7 +202,7 @@ void SET_COLORS()
 
 //Mapping the colors components(RGB) of the colors given in PALLETE to new values
 //The precent value is multiplied into each component of all PALLETE colors
-void SET_BRIGHTNESS(int percent)
+void SET_BRIGHTNESS(float percent)
 {
    for (int i=0;i<PALLETE_ELEMENTS;i++)
    {
