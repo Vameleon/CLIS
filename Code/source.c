@@ -4,11 +4,17 @@
 
 #define LONG_CRGB_P    12              //PHY pin
 #define LONG_CRGB_NUM  (57)   //number of leds on the strip
-#define NEIGHBOR_NUM    8
+#define LONG_NEIGHBOR_NUM    (8)      //Series of similar colors "Neighbors"
+                                //Remember that Leds NUM and Neighbor num should
+                                //be dividisble so all leds wil.
+                                //For example if you have 10 leds
+                                //choose neighrs to be 5
+                                //So you get two different colors at a time
+#define LONG_SIDE_NUM   8       //Number of leds on the side to be used
 
 #define SHORT_CRGB_P    14
 #define SHORT_CRGB_NUM    (8)         //number of leds on the strip
-
+#define SHORT_NEIGHBOR_NUM  (4)
 
 //Keep the following order at all times
 #define RED         0
@@ -69,7 +75,9 @@ float DEF_BRIGHTNESS = 20.0; //Global color brightness in %, 0-100
 void init();
 void SET_BRIGHTNESS(float);
 void SET_COLORS(void);
-
+void long_rainbow(uint16_t);
+void short_rainbow(uint16_t);
+void delay_us (uint32_t);
 //-------------------------End of Declaration--------------------------//
 
 
@@ -98,16 +106,11 @@ void loop()
     
     Serial.printf("Printing the RED_COMP:%i,%i,%i\n",COLOR_CONTENT_ARY[i].R,COLOR_CONTENT_ARY[i].G,COLOR_CONTENT_ARY[i].B);
     Serial.printf("------------------------------------------\n");
+    
+    long_rainbow(LONG_CRGB_NUM);
+    short_rainbow(SHORT_CRGB_NUM);
     delay(PERIOD);
-    for (int n=0;n<PALLETE_ELEMENTS;n++)
-    {
-        LONG_CRGB.setPixelColor(n,PALLETE[n]);\
-        LONG_CRGB.show();
-    }
 
-
-
-    delay(PERIOD);
 
     //SET_BRIGHTNESS(10.0);
     
@@ -228,6 +231,60 @@ void SET_BRIGHTNESS(float percent)
 }
 
 
+
+
+
+void long_rainbow (uint16_t number_leds)
+{
+    
+    //-------------------LONG CRGB--------------------------//
+    //loop for as many times as the number of leds. Don't loop the last leds (neighbor)
+    //Because the inner loop takes care of it
+    for (uint8_t n=0;n<(number_leds-LONG_NEIGHBOR_NUM);n+=LONG_NEIGHBOR_NUM)
+    {
+        //LONG_CRGB.setPixelColor(n,PALLETE[n]);
+        //Randomize colors
+        LONG_CRGB.setPixelColor(n,PALLETE[random(PALLETE_ELEMENTS)]);
+       
+        //take care  of our neighbors, if there are any.
+        //Color them with the same color as n
+        for (uint8_t u=0;u<LONG_NEIGHBOR_NUM;++u)
+        {
+            LONG_CRGB.setPixelColor(n+u,LONG_CRGB.getPixelColor(n));
+            //LONG_CRGB.show();
+            //delay_us(10);
+        }
+      
+    }
+      LONG_CRGB.show();
+      delay_us(10);
+}
+
+void short_rainbow (uint16_t number_leds)
+{
+    //-------------------SHORT CRGB------------------------//
+  //loop for as many times as the number of leds. Don't loop the last leds (neighbor)
+    //Because the inner loop takes care of it
+    for (uint8_t n=0;n<(number_leds);n++)
+    {
+        //SHORT_CRGB.setPixelColor(n,PALLETE[n]);
+        //Randomize colors
+        SHORT_CRGB.setPixelColor(n,PALLETE[random(PALLETE_ELEMENTS)]);
+        
+    }
+     SHORT_CRGB.show();
+    delay_us(10);
+  
+}
+
+
+//void set_long(uint16_t from_idx,uint16_t to_idx, PALLETE)
+
+
+void delay_us (uint32_t delay_val)
+{
+    delayMicroseconds(delay_val);
+}
 
 
 //-----------------------------End of LOW layer functions----------------------//
