@@ -26,9 +26,12 @@
 #define MAGENTA     6
 #define PURPLE      7
 #define TURQUOISE   8 
+#define WHITE       9
+#define BLACK       10
 
-
-#define PERIOD  1000                //period in program cycle in ms
+#define PERIOD  3000                //period in program cycle in ms
+#define BLINK_ON_PRD    90          //On time ms
+#define BLINK_OFF_PRD   200         //off time in ms
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = pin number (most are valid)
@@ -39,6 +42,7 @@
 //   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
 Adafruit_NeoPixel LONG_CRGB = Adafruit_NeoPixel(LONG_CRGB_NUM, LONG_CRGB_P, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel SHORT_CRGB = Adafruit_NeoPixel(SHORT_CRGB_NUM, SHORT_CRGB_P, NEO_GRB + NEO_KHZ800);
+typedef Adafruit_NeoPixel   CRGB_STRIP;     //Investigate
 
 
 //CRGB SHORT_CRGB[SHORT_CRGB_NUM];    //declare our strip and give it an ID
@@ -51,12 +55,12 @@ Adafruit_NeoPixel SHORT_CRGB = Adafruit_NeoPixel(SHORT_CRGB_NUM, SHORT_CRGB_P, N
 
 
 //-----------------------------Declaration-------------------------//
-enum MODES {NONE,BLINK_SIDES,BLINK_WHOLE,FLASH_SIDES,FLASH_WHOLE};
-MODES INDICATE_M = BLINK_SIDES;
+typedef enum MODES {NONE,BLINK_SIDES,BLINK_WHOLE,FLASH_SIDES,FLASH_WHOLE,RAINBOW_WHOLE};
+MODES INDICATE_M = RAINBOW_WHOLE;
 
-uint32_t Magenttta = LONG_CRGB.Color(255,0,255);    //debug
-uint32_t RED_C,GREEN_C,BLUE_C,YELLOW_C,LIME_C,ORANGE_C,MAGENTA_C,PURPLE_C,TURQUOISE_C;
-uint32_t PALLETE []={RED_C,GREEN_C,BLUE_C,YELLOW_C,LIME_C,ORANGE_C,MAGENTA_C,PURPLE_C,TURQUOISE_C};
+
+uint32_t RED_C,GREEN_C,BLUE_C,YELLOW_C,LIME_C,ORANGE_C,MAGENTA_C,PURPLE_C,TURQUOISE_C,WHITE_C,BLACK_C;
+uint32_t PALLETE []={RED_C,GREEN_C,BLUE_C,YELLOW_C,LIME_C,ORANGE_C,MAGENTA_C,PURPLE_C,TURQUOISE_C,WHITE_C,BLACK_C};
 int PALLETE_ELEMENTS = sizeof(PALLETE)/sizeof(PALLETE[0]);        //return num of elements
 
 typedef struct COLOR_CONTENT {
@@ -69,14 +73,18 @@ typedef struct COLOR_CONTENT {
 //Array of structs
 COLOR_CONTENT COLOR_CONTENT_ARY[9];
 
-float DEF_BRIGHTNESS = 20.0; //Global color brightness in %, 0-100
+float DEF_PALLETE_BRIGHTNESS = 5.0; //Global color brightness in %, 0-100
 
 
 void init();
-void SET_BRIGHTNESS(float);
+void INIT_BRIGHTNESS(float);
 void SET_COLORS(void);
 void long_rainbow(uint16_t);
 void short_rainbow(uint16_t);
+void set_long(uint16_t, uint16_t, uint8_t );
+void set_short(uint16_t, uint16_t, uint8_t);
+void clr_long_crgb(uint16_t,uint16_t);
+void clr_short_crgb(uint16_t,uint16_t);
 void delay_us (uint32_t);
 //-------------------------End of Declaration--------------------------//
 
@@ -96,23 +104,82 @@ void loop()
     Serial.printf("Current Mode is %i\n",INDICATE_M);
     Serial.printf("You have %i Elements in your Pallete\n",PALLETE_ELEMENTS);
     Serial.printf("Printing your PAllete's int values: \n");
+    
     for (int u=0;u<PALLETE_ELEMENTS;u++)
     {
         Serial.printf("-->%u\n",PALLETE[u]);
                
     }
-    Serial.printf("Printing Magneta int value now: %i\n",Magenttta);
+    //debug
+    //Serial.printf("Printing Magneta int value now: %i\n",Magenttta);
     //Serial.printf("Poll: Current color value is: %i\n",LONG_CRGB.getPixelColor(11));
     
     Serial.printf("Printing the RED_COMP:%i,%i,%i\n",COLOR_CONTENT_ARY[i].R,COLOR_CONTENT_ARY[i].G,COLOR_CONTENT_ARY[i].B);
     Serial.printf("------------------------------------------\n");
     
-    long_rainbow(LONG_CRGB_NUM);
-    short_rainbow(SHORT_CRGB_NUM);
+
+
+
+    switch(INDICATE_M)
+    {
+        case NONE:break;
+        case BLINK_SIDES:
+            Serial.printf("Current mode is blink sides...\n");
+            
+
+
+
+            set_long((LONG_CRGB_NUM-LONG_SIDE_NUM),LONG_CRGB_NUM,RED);
+            set_short(0,SHORT_CRGB_NUM,RED);
+            delay(BLINK_ON_PRD);
+
+            clr_long_crgb(0,LONG_CRGB_NUM);  
+            clr_short_crgb(0,SHORT_CRGB_NUM);     
+            delay(BLINK_OFF_PRD);
+            
+
+            set_long((LONG_CRGB_NUM-LONG_SIDE_NUM),LONG_CRGB_NUM,RED);
+            set_short(0,SHORT_CRGB_NUM,RED);
+            delay(BLINK_ON_PRD);
+
+            clr_long_crgb(0,LONG_CRGB_NUM);
+            clr_short_crgb(0,SHORT_CRGB_NUM);        
+            delay(BLINK_OFF_PRD);
+
+            set_long((LONG_CRGB_NUM-LONG_SIDE_NUM),LONG_CRGB_NUM,RED);
+            set_short(0,SHORT_CRGB_NUM,RED);
+            delay(BLINK_ON_PRD);
+
+            clr_long_crgb(0,LONG_CRGB_NUM);
+            clr_short_crgb(0,SHORT_CRGB_NUM);        
+            delay(BLINK_OFF_PRD);
+            break;
+
+
+        case RAINBOW_WHOLE:
+            long_rainbow(LONG_CRGB_NUM);
+            short_rainbow(SHORT_CRGB_NUM);
+            break;    
+
+    }
+
+    //Light the sides of the long CRGB
+   
+    //Light whole short
+    
+
+    
+    //long_rainbow(LONG_CRGB_NUM);
+    //short_rainbow(SHORT_CRGB_NUM);
+    delay(PERIOD);
+
+ 
+  
     delay(PERIOD);
 
 
-    //SET_BRIGHTNESS(10.0);
+
+    //INIT_BRIGHTNESS(10.0);
     
     i++;
     if (i>99)i=0;
@@ -141,9 +208,8 @@ void init()
     SHORT_CRGB.show();       // to off (black) 
    
     SET_COLORS();             //Initialize color values
-    SET_BRIGHTNESS(DEF_BRIGHTNESS);
-    //LONG_CRGB.setPixelColor(11, 255, 0, 255);  
-    //LONG_CRGB.show();     
+    INIT_BRIGHTNESS(DEF_PALLETE_BRIGHTNESS);
+    delay( 5000 ); // power-up safety delay
     }  
 
 
@@ -181,6 +247,8 @@ void SET_COLORS()
     COLOR_CONTENT_ARY[MAGENTA].R = 255, COLOR_CONTENT_ARY[6].G = 0,COLOR_CONTENT_ARY[6].B = 255;
     COLOR_CONTENT_ARY[PURPLE].R = 127, COLOR_CONTENT_ARY[7].G = 0,COLOR_CONTENT_ARY[7].B = 255;
     COLOR_CONTENT_ARY[TURQUOISE].R = 0, COLOR_CONTENT_ARY[8].G = 255,COLOR_CONTENT_ARY[8].B = 255;
+    COLOR_CONTENT_ARY[WHITE].R = 255, COLOR_CONTENT_ARY[8].G = 255,COLOR_CONTENT_ARY[8].B = 255;
+    COLOR_CONTENT_ARY[BLACK].R = 0, COLOR_CONTENT_ARY[8].G = 0,COLOR_CONTENT_ARY[8].B = 0;
 
 
     
@@ -205,7 +273,7 @@ void SET_COLORS()
 
 //Mapping the colors components(RGB) of the colors given in PALLETE to new values
 //The precent value is multiplied into each component of all PALLETE colors
-void SET_BRIGHTNESS(float percent)
+void INIT_BRIGHTNESS(float percent)
 {
    for (int i=0;i<PALLETE_ELEMENTS;i++)
    {
@@ -278,7 +346,69 @@ void short_rainbow (uint16_t number_leds)
 }
 
 
-//void set_long(uint16_t from_idx,uint16_t to_idx, PALLETE)
+
+//Set specific leds in long CRGB to turn on
+//Arg1: from led number index (0 is valid here)
+//Arg2: to led number index (Don't use 0) 
+//Arg3: The color which is to be index to PALLETE
+void set_long(uint16_t from_idx,uint16_t to_idx,uint8_t clr_idx)
+{
+    for (uint16_t r=from_idx;r<to_idx;r++)
+    {
+        LONG_CRGB.setPixelColor(r,PALLETE[clr_idx]);
+
+    }
+        delay_us(5);
+        LONG_CRGB.show();
+
+}
+
+//Set specific  leds in SHORT CRGB to turn on
+//Arg1: from led number index (0 is valid here)
+//Arg2: to led number index (Don't use 0) 
+//Arg3: The color which is to be index to PALLETE
+void set_short(uint16_t from_idx,uint16_t to_idx,uint8_t clr_idx)
+{
+    for (uint16_t r=from_idx;r<to_idx;r++)
+    {
+        SHORT_CRGB.setPixelColor(r,PALLETE[clr_idx]);
+        
+    }
+     SHORT_CRGB.show();
+     delay_us(5);
+   
+}
+
+
+
+//Clears specific leds/pixels of a given crgb
+void clr_long_crgb(uint16_t from_idx,uint16_t to_idx)
+{
+    for (int r=from_idx;r<to_idx;r++)
+    {
+        LONG_CRGB.setPixelColor(r,0,0,0);
+        LONG_CRGB.show();
+        delay_us(1);
+        
+    }
+    
+    
+}
+
+//Clears specific leds/pixels of a given crgb
+void clr_short_crgb(uint16_t from_idx,uint16_t to_idx)
+{
+    for (int r=from_idx;r<to_idx;r++)
+    {
+        SHORT_CRGB.setPixelColor(r,0,0,0);
+        SHORT_CRGB.show();
+        delay_us(1);
+        
+        
+    }
+   
+    
+}
 
 
 void delay_us (uint32_t delay_val)
