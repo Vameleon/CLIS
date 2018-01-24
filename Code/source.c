@@ -56,7 +56,7 @@
 #define TURQUOISE   8 
 #define WHITE       9
 
-#define UART_PRD    3000
+#define UART_PRD    3           //every 3 secs
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = pin number (most are valid)
@@ -83,13 +83,13 @@ typedef Adafruit_NeoPixel   CRGB_STRIP;     //Investigate
 typedef enum MODES {NONE,BLINK_SIDES,BLINK_WHOLE,FLASH_SIDES,FLASH_WHOLE,RAINBOW_WHOLE};
 MODES INDICATE_M = RAINBOW_WHOLE;
 uint8_t BLINK_ROUNDS = 4;
-uint8_t BLINK_SIDES_COLOR = GREEN;
-uint8_t BLINK_WHOLE_COLOR = YELLOW;
+uint8_t BLINK_SIDES_COLOR = RED;
+uint8_t BLINK_WHOLE_COLOR = ORANGE;
 uint16_t BLINK_ON_PRD = 69;
 uint16_t BLINK_OFF_PRD = 120;
 
 
-uint16_t RAINBOW_SHUFFLE_PRD = 20000;
+uint16_t RAINBOW_SHUFFLE_PRD = 20;      //Every x seconds
 
 uint32_t RED_C,GREEN_C,BLUE_C,YELLOW_C,LIME_C,ORANGE_C,MAGENTA_C,PURPLE_C,TURQUOISE_C,WHITE_C;
 uint32_t PALLETE []={RED_C,GREEN_C,BLUE_C,YELLOW_C,LIME_C,ORANGE_C,MAGENTA_C,PURPLE_C,TURQUOISE_C,WHITE_C};
@@ -148,6 +148,8 @@ void INIT_ESP32(void);
 void init_timer(void);
 void init_WiFi(void);
 void WiFi_connection_handler(void);
+void CONNECTION_SEND_HTTP_RESPONSE(WiFiClient);
+void CONNECTION_ANALYZE_HTTP_REQ(String);
 void MODE_SERVICE(void);
 void SET_COLORS(void);
 void INIT_BRIGHTNESS(float);
@@ -276,9 +278,9 @@ void init_timer()
   timerAttachInterrupt(tmr, &parallelisation, true);
   
   //Timer "timer" is 1st arg. Second is value of the counter
-  // until interrupt is generated (Value of counter in us, in this case every 1ms), 3rd arg->
+  // until interrupt is generated (Value of counter in us, in this case every 1s), 3rd arg->
   //indicating if the timer should automatically reload upon generating the interrupt.  
-  timerAlarmWrite(tmr, 1000, true);
+  timerAlarmWrite(tmr, 1000000, true);
   //
   timerAlarmEnable(tmr);
   //----------------------------------------------------------------//
@@ -332,70 +334,91 @@ void init_WiFi()
 void WiFi_connection_handler(void)
 {
     //**************************************WEB Server Section*******************************
-  WiFiClient client = ESP32_HTTP_SRV.available();   // listen for incoming clients
+  WiFiClient CONNECTION = ESP32_HTTP_SRV.available();   // listen for incoming clients
 
-  if (client) {                             // if you get a client,
-    Serial.println("New Client.");           // print a message out the serial port
-    String currentLine = "";                // make a String to hold incoming data from the client
-    while (client.connected()) {            // loop while the client's connected
-      if (client.available()) {             // if there's bytes to read from the client,
-        //Serial.println("Client connected, IP address: ");
-        //Serial.println(client.localIP());  //does not work 
-        char c = client.read();             // read a byte, then
+  if (CONNECTION) {                             // if you get a CONNECTION,
+    String INCOMING_STREAM = "";                // make a String to hold incoming data from the CONNECTION
+    
+    while (CONNECTION.connected()) {            // loop while the CONNECTION's connected
+    
+      if (CONNECTION.available()) {             // if there's bytes to read from the CONNECTION,
+
+        char c = CONNECTION.read();             // read a byte, then
         Serial.write(c);                    // print it out the serial monitor
+    
         if (c == '\n') {                    // if the byte is a newline character
+                                             //End of HTTP Request
 
-          // if the current line is blank, you got two newline characters in a row.
-          // that's the end of the client HTTP request, so send a response:
-          if (currentLine.length() == 0) {
-            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-            // and a content-type so the client knows what's coming, then a blank line:
-            client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:text/html");
-            client.println();
+      
+          //If we have not sent HTTP response   
+          if (INCOMING_STREAM.length() == 0) 
+          {
 
-            // the content of the HTTP response follows the header:
-            client.print("<font color='white'>");
-            client.print("<body bgcolor = '#2E2E2E'>");
-            char buFF[1000];
-            char * TitlE="ESP32";
-            sprintf(buFF,"<title> %s </title>",TitlE);
-            client.print(buFF);
-            client.print("Click <a href=\"/H\">here</a> to switch to BLINK SIDES mode.<br>");
-            client.print("Click <a href=\"/L\">here</a> to switch to BLINK WHOLE mode.<br>");
-            client.print("Click <a href=\"/R\">here</a> to switch to RAINBOW mode.<br>");
-            client.print("Tariq is ascending....<br>");
+            CONNECTION_SEND_HTTP_RESPONSE(CONNECTION);
 
-            // The HTTP response ends with another blank line:
-            client.println();
-            // break out of the while loop:
+            // break
             break;
-          } else {    // if you got a newline, then clear currentLine:
-            currentLine = "";
-          }
-        } else if (c != '\r') {  // if you got anything else but a carriage return character,
-          currentLine += c;      // add it to the end of the currentLine
-        }
-
-        // Check to see if the client request was "GET /H" or "GET /L":
-        if (currentLine.endsWith("GET /H")) INDICATE_M = BLINK_SIDES;
-         // digitalWrite(LED_YELLOW_PIN, HIGH);               // GET /H turns the LED on
-
-
-        if (currentLine.endsWith("GET /L")) INDICATE_M = BLINK_WHOLE;
+          } 
+           // if you got a newline, then clear INCOMING_STREAM:
+          else INCOMING_STREAM = "";
         
-        if (currentLine.endsWith("GET /R")) INDICATE_M = RAINBOW_WHOLE;
-          //digitalWrite(LED_YELLOW_PIN, LOW);                // GET /L turns the LED off
-
+        }
+        //put incoming character into INCOMING_STREAM as long as it is not a \r
+        else if (c != '\r') {  // if you got anything else but a carriage return character,
+          INCOMING_STREAM += c;      // add it to the end of the INCOMING_STREAM
+        }
+        
+        //Analyze the Incoming stream --> Act upon that
+        CONNECTION_ANALYZE_HTTP_REQ(INCOMING_STREAM);
+    
       }
     }
     // close the connection:
-    client.stop();
-    Serial.println("Client Disconnected.");
-
-
-  // wait for 30 milliseconds to see the dimming effect
+    CONNECTION.stop();
    }
+}
+
+
+void CONNECTION_SEND_HTTP_RESPONSE(WiFiClient connectxion)
+{
+    connectxion.println("HTTP/1.1 200 OK");          //http Init codes
+    connectxion.println("Content-type:text/html");
+    connectxion.println();                           //newline
+
+    //HTML code-------------------------------//
+    connectxion.print("<font color='white'>");
+    connectxion.print("<body bgcolor = '#2E2E2E'>");
+    char buFF[100];
+    char * TitlE="CLIS";
+    sprintf(buFF,"<title> %s </title>",TitlE);
+    connectxion.print(buFF);
+    connectxion.print("<a href=\"/BSIDER\">here</a>- BSIDE-R mode.<br>");
+    connectxion.print("<a href=\"/BSIDEG\">here</a>- BSIDE-G mode.<br>");
+    connectxion.print("<a href=\"/BSIDEB\">here</a>- BSIDE-B mode.<br>");
+    connectxion.print("<a href=\"/BWHOLR\">here</a>- BWHOL-R mode.<br>");
+    connectxion.print("<a href=\"/BWHOLG\">here</a>- BWHOL-G mode.<br>");
+    connectxion.print("<a href=\"/BWHOLB\">here</a>- BWHOL-B mode.<br>");
+    connectxion.print("<a href=\"/RBOW\">here</a> - RBOW mode.<br>");
+    connectxion.print("<a href=\"/NONE\">here</a> - NONE.<br>");
+    //-----------------------------------------//
+
+    //End the response with /n:
+    connectxion.println();
+    
+
+}
+
+
+void CONNECTION_ANALYZE_HTTP_REQ(String inc_response)
+{
+        if (inc_response.endsWith("GET /BSIDER")) {BLINK_SIDES_COLOR=RED; INDICATE_M = BLINK_SIDES;}
+        else if (inc_response.endsWith("GET /BSIDEG")){BLINK_SIDES_COLOR=GREEN; INDICATE_M = BLINK_SIDES;}
+        else if (inc_response.endsWith("GET /BSIDEB")){BLINK_SIDES_COLOR=BLUE; INDICATE_M = BLINK_SIDES;}
+        else if (inc_response.endsWith("GET /BWHOLR")){BLINK_WHOLE_COLOR=RED; INDICATE_M = BLINK_WHOLE;}
+        else if (inc_response.endsWith("GET /BWHOLG")){BLINK_WHOLE_COLOR=GREEN; INDICATE_M = BLINK_WHOLE;}
+        else if (inc_response.endsWith("GET /BWHOLB")){BLINK_WHOLE_COLOR=BLUE; INDICATE_M = BLINK_WHOLE;}
+        else if (inc_response.endsWith("GET /RBOWR")) INDICATE_M = RAINBOW_WHOLE;
+        else if (inc_response.endsWith("GET /NONE")) {BLINK_SIDES_COLOR=GREEN; INDICATE_M = BLINK_SIDES;INDICATE_M = NONE;}
 }
 
 
@@ -524,7 +547,7 @@ void INIT_BRIGHTNESS(float percent)
       //debug
       //PALLETE[i]= LONG_CRGB.Color(COLOR_CONTENT_ARY[i].R, COLOR_CONTENT_ARY[i].G, COLOR_CONTENT_ARY[i].B);
       Serial.printf("%i. R:%i------G:%i------B:%i\n",i,COLOR_CONTENT_ARY[i].R,COLOR_CONTENT_ARY[i].G,COLOR_CONTENT_ARY[i].B);
-      Serial.printf("Test %i\n",( (uint8_t)(COLOR_CONTENT_ARY[i].R * (float)(percent/100.0))));
+
 
    }
       //Red Green Blue order
