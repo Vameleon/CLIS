@@ -1,4 +1,32 @@
+//Written by Tariq A
+//I am thankful to Adafruit's library NeoPixel, however,
+//There are many things to be imporved in the lib.
+//Website: www.tariq.world
+//Project: CRGB Leds Indication System (CLIS) - Hobby and free time project
+//Hardware: ESP32 WiFi module
+//IDE: Arduino IDE
+//Compiled: On windows 64-bit machine
+//The source code is put in a single file, since this is a simple collective code.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #include <Adafruit_NeoPixel.h>
+#include <Preferences.h>
+#include <WiFi.h>
+
 
 
 
@@ -27,11 +55,8 @@
 #define PURPLE      7
 #define TURQUOISE   8 
 #define WHITE       9
-#define BLACK       10
 
-#define PERIOD  3000                //period in program cycle in ms
-#define BLINK_ON_PRD    90          //On time ms
-#define BLINK_OFF_PRD   200         //off time in ms
+#define UART_PRD    3000
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = pin number (most are valid)
@@ -57,11 +82,20 @@ typedef Adafruit_NeoPixel   CRGB_STRIP;     //Investigate
 //-----------------------------Declaration-------------------------//
 typedef enum MODES {NONE,BLINK_SIDES,BLINK_WHOLE,FLASH_SIDES,FLASH_WHOLE,RAINBOW_WHOLE};
 MODES INDICATE_M = RAINBOW_WHOLE;
+uint8_t BLINK_ROUNDS = 4;
+uint8_t BLINK_SIDES_COLOR = GREEN;
+uint8_t BLINK_WHOLE_COLOR = YELLOW;
+uint16_t BLINK_ON_PRD = 69;
+uint16_t BLINK_OFF_PRD = 120;
 
 
-uint32_t RED_C,GREEN_C,BLUE_C,YELLOW_C,LIME_C,ORANGE_C,MAGENTA_C,PURPLE_C,TURQUOISE_C,WHITE_C,BLACK_C;
-uint32_t PALLETE []={RED_C,GREEN_C,BLUE_C,YELLOW_C,LIME_C,ORANGE_C,MAGENTA_C,PURPLE_C,TURQUOISE_C,WHITE_C,BLACK_C};
+uint16_t RAINBOW_SHUFFLE_PRD = 20000;
+
+uint32_t RED_C,GREEN_C,BLUE_C,YELLOW_C,LIME_C,ORANGE_C,MAGENTA_C,PURPLE_C,TURQUOISE_C,WHITE_C;
+uint32_t PALLETE []={RED_C,GREEN_C,BLUE_C,YELLOW_C,LIME_C,ORANGE_C,MAGENTA_C,PURPLE_C,TURQUOISE_C,WHITE_C};
 int PALLETE_ELEMENTS = sizeof(PALLETE)/sizeof(PALLETE[0]);        //return num of elements
+
+
 
 typedef struct COLOR_CONTENT {
      uint32_t R,G,B;
@@ -71,14 +105,52 @@ typedef struct COLOR_CONTENT {
 //ORANGE_COMP,MAGENTA_COMP,PURPLE_COMP,TURQUOISE_COMP;
 
 //Array of structs
-COLOR_CONTENT COLOR_CONTENT_ARY[9];
+COLOR_CONTENT COLOR_CONTENT_ARY[10];
 
-float DEF_PALLETE_BRIGHTNESS = 5.0; //Global color brightness in %, 0-100
+float DEF_PALLETE_BRIGHTNESS = 20.0; //Global color brightness in %, 0-100
 
 
-void init();
-void INIT_BRIGHTNESS(float);
+//------WiFi-------//
+
+const char* SSID     = "SSID_NAME_HERE";
+const char* PASSWORD = "SSID_PASSWORD_HERE";
+WiFiServer ESP32_HTTP_SRV(80);
+
+//----------------//
+
+
+  //------------------------------INTERRUPT-------------------------//
+volatile uint16_t UART_PRD_CNT = 0;
+volatile uint16_t RAINBOW_SHUFFLE_PRD_CNT = 0;
+//Create pointer of type hw_timer and name it to timer
+hw_timer_t * tmr = NULL;
+//create variable portMux of type portMUX to sync between main and ISR
+portMUX_TYPE Mux = portMUX_INITIALIZER_UNLOCKED;
+
+void IRAM_ATTR parallelisation() {
+  portENTER_CRITICAL_ISR(&Mux);
+  UART_PRD_CNT++;
+  RAINBOW_SHUFFLE_PRD_CNT++;
+  portEXIT_CRITICAL_ISR(&Mux);
+ 
+}
+
+
+  //------------------------------END OF INTERRUPT-------------------------//
+
+
+
+
+
+
+
+void INIT_ESP32(void);
+void init_timer(void);
+void init_WiFi(void);
+void WiFi_connection_handler(void);
+void MODE_SERVICE(void);
 void SET_COLORS(void);
+void INIT_BRIGHTNESS(float);
 void long_rainbow(uint16_t);
 void short_rainbow(uint16_t);
 void set_long(uint16_t, uint16_t, uint8_t );
@@ -91,77 +163,56 @@ void delay_us (uint32_t);
 
 void setup() {
  
-    void init ();
-
+    INIT_ESP32 ();
+    init_timer();
+    init_WiFi();
 }
+
+
 
 
 void loop()
 {
-    uint8_t i=0;
-    Serial.printf("Program is in loop\n");
-    //INDICATE(INDICATE_M);
-    Serial.printf("Current Mode is %i\n",INDICATE_M);
-    Serial.printf("You have %i Elements in your Pallete\n",PALLETE_ELEMENTS);
-    Serial.printf("Printing your PAllete's int values: \n");
-    
-    for (int u=0;u<PALLETE_ELEMENTS;u++)
+    if (UART_PRD_CNT >= UART_PRD)
     {
-        Serial.printf("-->%u\n",PALLETE[u]);
+        Serial.printf("Program is in loop\n");
+        Serial.printf("Current Mode is %i\n",INDICATE_M);
+        Serial.printf("You have %i Elements in your Pallete\n",PALLETE_ELEMENTS);
+        Serial.printf("Printing your PAllete's int values: \n");
+        for (int u=0;u<PALLETE_ELEMENTS;u++)
+        {
+             Serial.printf("-->%u\n",PALLETE[u]);
                
+        }
+        Serial.printf("%d ms Since Interrupt triggered\n",(UART_PRD_CNT-UART_PRD));
+    
+        Serial.printf("------------------------------------------\n");
+        UART_PRD_CNT = 0;
+
     }
+
+    //INDICATE(INDICATE_M);
+    WiFi_connection_handler();
+    MODE_SERVICE();
+    
+
     //debug
     //Serial.printf("Printing Magneta int value now: %i\n",Magenttta);
     //Serial.printf("Poll: Current color value is: %i\n",LONG_CRGB.getPixelColor(11));
+
+     
+
+
+
+
+
+
+
+
+
     
-    Serial.printf("Printing the RED_COMP:%i,%i,%i\n",COLOR_CONTENT_ARY[i].R,COLOR_CONTENT_ARY[i].G,COLOR_CONTENT_ARY[i].B);
-    Serial.printf("------------------------------------------\n");
-    
 
-
-
-    switch(INDICATE_M)
-    {
-        case NONE:break;
-        case BLINK_SIDES:
-            Serial.printf("Current mode is blink sides...\n");
-            
-
-
-
-            set_long((LONG_CRGB_NUM-LONG_SIDE_NUM),LONG_CRGB_NUM,RED);
-            set_short(0,SHORT_CRGB_NUM,RED);
-            delay(BLINK_ON_PRD);
-
-            clr_long_crgb(0,LONG_CRGB_NUM);  
-            clr_short_crgb(0,SHORT_CRGB_NUM);     
-            delay(BLINK_OFF_PRD);
-            
-
-            set_long((LONG_CRGB_NUM-LONG_SIDE_NUM),LONG_CRGB_NUM,RED);
-            set_short(0,SHORT_CRGB_NUM,RED);
-            delay(BLINK_ON_PRD);
-
-            clr_long_crgb(0,LONG_CRGB_NUM);
-            clr_short_crgb(0,SHORT_CRGB_NUM);        
-            delay(BLINK_OFF_PRD);
-
-            set_long((LONG_CRGB_NUM-LONG_SIDE_NUM),LONG_CRGB_NUM,RED);
-            set_short(0,SHORT_CRGB_NUM,RED);
-            delay(BLINK_ON_PRD);
-
-            clr_long_crgb(0,LONG_CRGB_NUM);
-            clr_short_crgb(0,SHORT_CRGB_NUM);        
-            delay(BLINK_OFF_PRD);
-            break;
-
-
-        case RAINBOW_WHOLE:
-            long_rainbow(LONG_CRGB_NUM);
-            short_rainbow(SHORT_CRGB_NUM);
-            break;    
-
-    }
+    //INIT_BRIGHTNESS(10.0);
 
     //Light the sides of the long CRGB
    
@@ -171,19 +222,8 @@ void loop()
     
     //long_rainbow(LONG_CRGB_NUM);
     //short_rainbow(SHORT_CRGB_NUM);
-    delay(PERIOD);
-
- 
   
-    delay(PERIOD);
-
-
-
-    //INIT_BRIGHTNESS(10.0);
     
-    i++;
-    if (i>99)i=0;
-  
 }
 
 
@@ -191,13 +231,24 @@ void loop()
 
 
 
-void init()
+void INIT_ESP32()
 {
+    
     delay(1000);
     pinMode(LONG_CRGB_P, OUTPUT);
     pinMode(SHORT_CRGB_P, OUTPUT);
     Serial.begin(115200);
     Serial.printf("Initiating the MCU.....\n");
+    
+    //increment "boot_cnt"
+    Preferences Pref;
+    Pref.begin("my-app", false);
+    unsigned int cur_boot_cnt = Pref.getUInt("boot_cnt", 0);
+    cur_boot_cnt+=1;      
+    Serial.printf("Boot #: %d\n", cur_boot_cnt);
+    Pref.putUInt("boot_cnt", cur_boot_cnt);
+    Pref.end();
+    
     delay( 5000 ); // power-up safety delay
     
     //Initiate lib
@@ -210,7 +261,198 @@ void init()
     SET_COLORS();             //Initialize color values
     INIT_BRIGHTNESS(DEF_PALLETE_BRIGHTNESS);
     delay( 5000 ); // power-up safety delay
-    }  
+}  
+
+
+
+void init_timer()
+{
+  //------------------------------INTERRUPT-------------------------//
+  ////Prescaler 80
+  tmr = timerBegin(0, 80, true);
+  
+  //Timer "timer" as 1st arg, the address of the function that will handle the interrupt as 2nd arg
+  //interrupt to be generated is edge (true) or level (false).
+  timerAttachInterrupt(tmr, &parallelisation, true);
+  
+  //Timer "timer" is 1st arg. Second is value of the counter
+  // until interrupt is generated (Value of counter in us, in this case every 1ms), 3rd arg->
+  //indicating if the timer should automatically reload upon generating the interrupt.  
+  timerAlarmWrite(tmr, 1000, true);
+  //
+  timerAlarmEnable(tmr);
+  //----------------------------------------------------------------//
+}
+
+
+
+
+
+void init_WiFi()
+{
+    uint8_t frst_exec=1;
+
+    Serial.println();
+    Serial.println(SSID);
+    Serial.printf(" is target SSID\n");
+
+    WIFI_BEGIN_EDGE:WiFi.begin(SSID, PASSWORD);
+
+    for (uint8_t r=0;r<10;r++)
+    {
+
+        
+        if (WiFi.status() != WL_CONNECTED) {
+            Serial.printf("attempting....\n");
+            delay(500);
+        
+        }
+        else
+        {
+            Serial.printf("ESP32 is now connected to WiFi\n");
+            Serial.printf("IP if available: \n");
+            Serial.println(WiFi.localIP());     //print ESP's IP addr.
+            ESP32_HTTP_SRV.begin();              //Initiate server!
+            break;
+        }
+        delay(2000*r);
+        
+    }
+
+    
+    
+    if (frst_exec) {
+        frst_exec = 0;
+        goto WIFI_BEGIN_EDGE;
+        
+    }
+   
+}
+
+void WiFi_connection_handler(void)
+{
+    //**************************************WEB Server Section*******************************
+  WiFiClient client = ESP32_HTTP_SRV.available();   // listen for incoming clients
+
+  if (client) {                             // if you get a client,
+    Serial.println("New Client.");           // print a message out the serial port
+    String currentLine = "";                // make a String to hold incoming data from the client
+    while (client.connected()) {            // loop while the client's connected
+      if (client.available()) {             // if there's bytes to read from the client,
+        //Serial.println("Client connected, IP address: ");
+        //Serial.println(client.localIP());  //does not work 
+        char c = client.read();             // read a byte, then
+        Serial.write(c);                    // print it out the serial monitor
+        if (c == '\n') {                    // if the byte is a newline character
+
+          // if the current line is blank, you got two newline characters in a row.
+          // that's the end of the client HTTP request, so send a response:
+          if (currentLine.length() == 0) {
+            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
+            // and a content-type so the client knows what's coming, then a blank line:
+            client.println("HTTP/1.1 200 OK");
+            client.println("Content-type:text/html");
+            client.println();
+
+            // the content of the HTTP response follows the header:
+            client.print("<font color='white'>");
+            client.print("<body bgcolor = '#2E2E2E'>");
+            char buFF[1000];
+            char * TitlE="ESP32";
+            sprintf(buFF,"<title> %s </title>",TitlE);
+            client.print(buFF);
+            client.print("Click <a href=\"/H\">here</a> to switch to BLINK SIDES mode.<br>");
+            client.print("Click <a href=\"/L\">here</a> to switch to BLINK WHOLE mode.<br>");
+            client.print("Click <a href=\"/R\">here</a> to switch to RAINBOW mode.<br>");
+            client.print("Tariq is ascending....<br>");
+
+            // The HTTP response ends with another blank line:
+            client.println();
+            // break out of the while loop:
+            break;
+          } else {    // if you got a newline, then clear currentLine:
+            currentLine = "";
+          }
+        } else if (c != '\r') {  // if you got anything else but a carriage return character,
+          currentLine += c;      // add it to the end of the currentLine
+        }
+
+        // Check to see if the client request was "GET /H" or "GET /L":
+        if (currentLine.endsWith("GET /H")) INDICATE_M = BLINK_SIDES;
+         // digitalWrite(LED_YELLOW_PIN, HIGH);               // GET /H turns the LED on
+
+
+        if (currentLine.endsWith("GET /L")) INDICATE_M = BLINK_WHOLE;
+        
+        if (currentLine.endsWith("GET /R")) INDICATE_M = RAINBOW_WHOLE;
+          //digitalWrite(LED_YELLOW_PIN, LOW);                // GET /L turns the LED off
+
+      }
+    }
+    // close the connection:
+    client.stop();
+    Serial.println("Client Disconnected.");
+
+
+  // wait for 30 milliseconds to see the dimming effect
+   }
+}
+
+
+void MODE_SERVICE (void)
+{
+        switch(INDICATE_M)
+    {
+        case NONE:break;
+        case BLINK_SIDES:
+            Serial.printf("Current mode is blink sides...\n");
+            
+            for (int r =0;r<BLINK_ROUNDS;r++)
+            {
+                set_long((LONG_CRGB_NUM-LONG_SIDE_NUM),LONG_CRGB_NUM,BLINK_SIDES_COLOR);
+                set_short(0,SHORT_CRGB_NUM,BLINK_SIDES_COLOR);
+                delay(BLINK_ON_PRD);
+
+                clr_long_crgb(0,LONG_CRGB_NUM);  
+                clr_short_crgb(0,SHORT_CRGB_NUM);     
+                delay(BLINK_OFF_PRD);
+            }            
+            INDICATE_M = NONE;
+            break;
+
+        case BLINK_WHOLE:
+            for (int r =0;r<BLINK_ROUNDS;r++)
+            {
+                set_long(0,LONG_CRGB_NUM,BLINK_WHOLE_COLOR);
+                set_short(0,SHORT_CRGB_NUM,BLINK_WHOLE_COLOR);
+                delay(BLINK_ON_PRD);
+
+                clr_long_crgb(0,LONG_CRGB_NUM);  
+                clr_short_crgb(0,SHORT_CRGB_NUM);     
+                delay(BLINK_OFF_PRD);
+            }  
+            INDICATE_M = NONE;
+            break;    
+
+
+        case RAINBOW_WHOLE:
+            if (RAINBOW_SHUFFLE_PRD_CNT >= RAINBOW_SHUFFLE_PRD)
+            {
+            long_rainbow(LONG_CRGB_NUM);
+            short_rainbow(SHORT_CRGB_NUM);
+            RAINBOW_SHUFFLE_PRD_CNT = 0;
+            }
+            break;    
+
+    }
+
+}
+
+
+
+
+
+
 
 
 
@@ -248,7 +490,6 @@ void SET_COLORS()
     COLOR_CONTENT_ARY[PURPLE].R = 127, COLOR_CONTENT_ARY[7].G = 0,COLOR_CONTENT_ARY[7].B = 255;
     COLOR_CONTENT_ARY[TURQUOISE].R = 0, COLOR_CONTENT_ARY[8].G = 255,COLOR_CONTENT_ARY[8].B = 255;
     COLOR_CONTENT_ARY[WHITE].R = 255, COLOR_CONTENT_ARY[8].G = 255,COLOR_CONTENT_ARY[8].B = 255;
-    COLOR_CONTENT_ARY[BLACK].R = 0, COLOR_CONTENT_ARY[8].G = 0,COLOR_CONTENT_ARY[8].B = 0;
 
 
     
@@ -358,8 +599,9 @@ void set_long(uint16_t from_idx,uint16_t to_idx,uint8_t clr_idx)
         LONG_CRGB.setPixelColor(r,PALLETE[clr_idx]);
 
     }
-        delay_us(5);
+        delay_us(1);
         LONG_CRGB.show();
+
 
 }
 
@@ -387,10 +629,11 @@ void clr_long_crgb(uint16_t from_idx,uint16_t to_idx)
     for (int r=from_idx;r<to_idx;r++)
     {
         LONG_CRGB.setPixelColor(r,0,0,0);
-        LONG_CRGB.show();
-        delay_us(1);
+
         
     }
+        LONG_CRGB.show();
+        delay_us(1);
     
     
 }
@@ -401,13 +644,10 @@ void clr_short_crgb(uint16_t from_idx,uint16_t to_idx)
     for (int r=from_idx;r<to_idx;r++)
     {
         SHORT_CRGB.setPixelColor(r,0,0,0);
-        SHORT_CRGB.show();
-        delay_us(1);
-        
-        
+      
     }
-   
-    
+        SHORT_CRGB.show();
+        delay_us(1);   
 }
 
 
