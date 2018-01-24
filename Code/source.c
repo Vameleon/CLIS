@@ -107,7 +107,7 @@ typedef struct COLOR_CONTENT {
 //Array of structs
 COLOR_CONTENT COLOR_CONTENT_ARY[10];
 
-float DEF_PALLETE_BRIGHTNESS = 20.0; //Global color brightness in %, 0-100
+float DEF_PALLETE_BRIGHTNESS = 60.0; //Global color brightness in %, 0-100
 
 
 //------WiFi-------//
@@ -417,7 +417,7 @@ void CONNECTION_ANALYZE_HTTP_REQ(String inc_response)
         else if (inc_response.endsWith("GET /BWHOLR")){BLINK_WHOLE_COLOR=RED; INDICATE_M = BLINK_WHOLE;}
         else if (inc_response.endsWith("GET /BWHOLG")){BLINK_WHOLE_COLOR=GREEN; INDICATE_M = BLINK_WHOLE;}
         else if (inc_response.endsWith("GET /BWHOLB")){BLINK_WHOLE_COLOR=BLUE; INDICATE_M = BLINK_WHOLE;}
-        else if (inc_response.endsWith("GET /RBOWR")) INDICATE_M = RAINBOW_WHOLE;
+        else if (inc_response.endsWith("GET /RBOW")) INDICATE_M = RAINBOW_WHOLE;
         else if (inc_response.endsWith("GET /NONE")) {BLINK_SIDES_COLOR=GREEN; INDICATE_M = BLINK_SIDES;}
 }
 
