@@ -418,7 +418,7 @@ void CONNECTION_ANALYZE_HTTP_REQ(String inc_response)
         else if (inc_response.endsWith("GET /BWHOLG")){BLINK_WHOLE_COLOR=GREEN; INDICATE_M = BLINK_WHOLE;}
         else if (inc_response.endsWith("GET /BWHOLB")){BLINK_WHOLE_COLOR=BLUE; INDICATE_M = BLINK_WHOLE;}
         else if (inc_response.endsWith("GET /RBOWR")) INDICATE_M = RAINBOW_WHOLE;
-        else if (inc_response.endsWith("GET /NONE")) {BLINK_SIDES_COLOR=GREEN; INDICATE_M = BLINK_SIDES;INDICATE_M = NONE;}
+        else if (inc_response.endsWith("GET /NONE")) {BLINK_SIDES_COLOR=GREEN; INDICATE_M = BLINK_SIDES;}
 }
 
 
