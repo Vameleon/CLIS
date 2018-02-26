@@ -80,7 +80,7 @@ typedef Adafruit_NeoPixel   CRGB_STRIP;     //Investigate
 
 
 //-----------------------------Declaration-------------------------//
-typedef enum MODES {NONE,BLINK_SIDES,BLINK_WHOLE,FLASH_SIDES,FLASH_WHOLE,RAINBOW_WHOLE};
+typedef enum MODES {NONE,BLINK_SIDES,BLINK_WHOLE,RAINBOW_WHOLE};
 MODES INDICATE_M = RAINBOW_WHOLE;
 uint8_t BLINK_ROUNDS = 4;
 uint8_t BLINK_SIDES_COLOR = RED;
@@ -187,7 +187,8 @@ void loop()
                
         }
         Serial.printf("%d ms Since Interrupt triggered\n",(UART_PRD_CNT-UART_PRD));
-    
+        Serial.printf("IP: ");
+        Serial.println(WiFi.localIP());     //print ESP's IP addr.
         Serial.printf("------------------------------------------\n");
         UART_PRD_CNT = 0;
 
@@ -295,7 +296,7 @@ void init_WiFi()
     uint8_t frst_exec=1;
 
     Serial.println();
-    Serial.println(SSID);
+    Serial.print(SSID);
     Serial.printf(" is target SSID\n");
 
     WIFI_BEGIN_EDGE:WiFi.begin(SSID, PASSWORD);
@@ -306,8 +307,7 @@ void init_WiFi()
         
         if (WiFi.status() != WL_CONNECTED) {
             Serial.printf("attempting....\n");
-            delay(500);
-        
+            delay(50);
         }
         else
         {
@@ -315,6 +315,8 @@ void init_WiFi()
             Serial.printf("IP if available: \n");
             Serial.println(WiFi.localIP());     //print ESP's IP addr.
             ESP32_HTTP_SRV.begin();              //Initiate server!
+            delay(2000*r+1);
+            frst_exec =!true;
             break;
         }
         delay(2000*r);
